@@ -23,7 +23,7 @@ def load_league():
     )
 
 # Load and preprocess schedule
-schedule_df = pd.read_excel("C:\\Users\\cwhitese\\NBASchedule.xlsx")
+schedule_df = pd.read_excel("static\\NBASchedule.xlsx")
 schedule_df['Game Date'] = pd.to_datetime(schedule_df['Game Date'])
 schedule_df['DOW'] = schedule_df['DOW'].str.strip()
 schedule_df['Visit'] = schedule_df['Visit'].str.strip()
