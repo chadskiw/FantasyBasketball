@@ -1,0 +1,103 @@
+/* Style for table rows based on positions */
+tr td.position-PG {
+    background-color: #f4cccc; /* Light red for Point Guard */
+    color: #b22222; /* Dark red text */
+}
+
+tr td.position-SG {
+    background-color: #c9daf8; /* Light blue for Shooting Guard */
+    color: #00008b; /* Dark blue text */
+}
+
+tr td.position-SF {
+    background-color: #d9ead3; /* Light green for Small Forward */
+    color: #006400; /* Dark green text */
+}
+
+tr td.position-PF {
+    background-color: #fce5cd; /* Light orange for Power Forward */
+    color: #d2691e; /* Dark orange text */
+}
+
+tr td.position-C {
+    background-color: #e6e6fa; /* Light purple for Center */
+    color: #4b0082; /* Dark purple text */
+}
+
+/* Cool green for team players */
+.team-player {
+    color: #28a745; /* Cool green color */
+    font-weight: bold;
+}
+
+/* Cool red for free agents */
+.free-agent {
+    color: blue; /* Cool red color */
+    font-weight: bold;
+}
+
+.other {
+    color: #dc3545; /* Cool red color */
+    font-weight: bold;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    margin: 20px;
+}
+
+h1, h2 {
+    text-align: center;
+}
+
+form {
+    margin: 20px 0;
+    text-align: center;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+th, td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+}
+
+th {
+    background-color: #f4f4f4;
+    cursor: pointer;
+}
+
+tbody tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+tbody tr:hover {
+    background-color: #f1f1f1;
+}
+
+button {
+    padding: 10px 20px;
+    margin: 10px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+button:hover {
+    background-color: #45a049;
+}
+
+.team-player {
+    color: green;
+}
+
+.free-agent {
+    color: red;
+}

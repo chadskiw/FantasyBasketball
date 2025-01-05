@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Next 7</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/jquery.dataTables.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <h1>Next 7</h1>
+
+    <!-- Form for Team Selection -->
+    <form id="team-form" style="text-align: center; margin-bottom: 20px;">
+        <label for="team">Select Team:</label>
+        <select id="team">
+            <option value="all">All Teams</option>
+            {% for team in teams %}
+            <option value="{{ team }}">{{ team }}</option>
+            {% endfor %}
+        </select>
+        
+        <button type="submit">Get Recommendations</button>
+    </form>
+
+    <!-- Daily Schedule Chart -->
+    <h2>Daily Schedule Overview</h2>
+    <div class="chart-container" style="width: 80%; margin: auto;">
+        <canvas id="daily-schedule-chart"></canvas>
+    </div>
+    <div id="weekly-summary" style="text-align: center; margin-top: 20px;">
+        <h3>Total Weekly Points: <span id="total-weekly-points">0.00</span></h3>
+        <h3>Total Player Count: <span id="total-player-count">0</span></h3>
+    </div>
+    
+    <!-- Suggested Pickups -->
+    <h2>Suggested Free Agent Pickups</h2>
+    <table id="suggested-pickups" class="display">
+        <thead>
+            <tr>
+                <th>✔</th>
+                <th>Name</th>
+                <th>Status</th>
+                <th>Position</th>
+                <th>Pro Team</th>
+                <th>Games in Week</th>
+                <th>Average Points</th>
+                <th>Projected Points</th>
+                <th>Days of Play</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <!-- Players to Drop -->
+    <h2>Players to Drop</h2>
+    <table id="drop-candidates" class="display">
+        <thead>
+            <tr>
+                <th>✔</th>
+                <th>Name</th>
+                <th>Status</th>
+                <th>Position</th>
+                <th>Pro Team</th>
+                <th>Games in Week</th>
+                <th>Average Points</th>
+                <th>Projected Points</th>
+                <th>Days of Play</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <script>
+        $(document).ready(function () {
+            const dailyScheduleChartCtx = document.getElementById('daily-schedule-chart').getContext('2d');
+            const daysInWeek = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+            const todayIndex = (new Date().getDay() + 6) % 7; // Convert Sunday (0) to end of the week
+            const nextSevenDays = [...daysInWeek.slice(todayIndex), ...daysInWeek.slice(0, todayIndex)].slice(0, 7);
+
+            console.log("Next Seven Days:", nextSevenDays);
+
+            const dailyScheduleChart = new Chart(dailyScheduleChartCtx, {
+                type: 'bar',
+                data: {
+                    labels: nextSevenDays,
+                    datasets: [
+                        {
+                            label: 'Total Points',
+                            type: 'bar',
+                            backgroundColor: 'rgba(255, 99, 132, 0.6)',
+                            borderColor: 'rgba(255, 99, 132, 1)',
+                            borderWidth: 1,
+                            data: Array(nextSevenDays.length).fill(0),
+                            yAxisID: 'y-axis-1',
+                        },
+                        {
+                            label: '# of Players',
+                            type: 'line',
+                            fill: false,
+                            backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            borderWidth: 2,
+                            data: Array(nextSevenDays.length).fill(0),
+                            yAxisID: 'y-axis-2',
+                        },
+                    ],
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: {
+                            title: { display: true, text: 'Days of the Week' },
+                        },
+                        y: {
+                            'y-axis-1': {
+                                type: 'linear',
+                                position: 'left',
+                                title: { display: true, text: 'Total Points' },
+                            },
+                            'y-axis-2': {
+                                type: 'linear',
+                                position: 'right',
+                                title: { display: true, text: '# of Players' },
+                                grid: { drawOnChartArea: false }, // Only draw grid lines for the left axis
+                            },
+                        },
+                    },
+                },
+            });
+
+            const suggestedPickupsTable = $('#suggested-pickups').DataTable();
+            const dropCandidatesTable = $('#drop-candidates').DataTable();
+
+            function updateChartData() {
+                const playerPointsByDay = {
+                    Mon: [], Tue: [], Wed: [], Thu: [], Fri: [], Sat: [], Sun: []
+                };
+                const playerCountByDay = { Mon: 0, Tue: 0, Wed: 0, Thu: 0, Fri: 0, Sat: 0, Sun: 0 };
+                let weeklyTotalPoints = 0;
+
+                // Collect points for each day from checked checkboxes
+                $('.player-checkbox:checked').each(function () {
+                    const gameDays = $(this).data('game-days').split(',').map(day => day.trim());
+                    const playerPoints = parseFloat($(this).data('points')) || 0;
+
+                    gameDays.forEach(day => {
+                        if (playerPointsByDay[day]) {
+                            playerPointsByDay[day].push(playerPoints);
+                            playerCountByDay[day]++;
+                        }
+                    });
+                });
+
+                // Calculate capped totals for each day (up to 10 best players)
+                const totalPoints = nextSevenDays.map(day => {
+                    const sortedPoints = playerPointsByDay[day].sort((a, b) => b - a); // Sort in descending order
+                    const top10Points = sortedPoints.slice(0, 10); // Take the top 10 scorers
+                    const dayTotal = top10Points.reduce((sum, points) => sum + points, 0); // Sum the top 10 points
+                    weeklyTotalPoints += dayTotal;
+                    return dayTotal;
+                });
+
+                const playerCounts = nextSevenDays.map(day => playerCountByDay[day]);
+
+                // Update chart datasets
+                dailyScheduleChart.data.datasets[0].data = totalPoints; // Total Points dataset
+                dailyScheduleChart.data.datasets[1].data = playerCounts; // Player Count dataset
+                dailyScheduleChart.update();
+
+                // Update weekly summary display
+                $('#total-weekly-points').text(weeklyTotalPoints.toFixed(2));
+                $('#total-player-count').text($('.player-checkbox:checked').length); // Total checked players
+            }
+
+            async function fetchRecommendations() {
+                const team = $('#team').val();
+                try {
+                    const response = await fetch('/recommendations', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ team }),
+                    });
+
+                    if (!response.ok) throw new Error('Failed to fetch recommendations');
+                    const data = await response.json();
+
+                    console.log("Recommendations Data:", data);
+
+                    // Update Suggested Pickups Table
+                    suggestedPickupsTable.clear();
+                    data.suggested_pickups.forEach(player => {
+                        suggestedPickupsTable.row.add([
+                            `<input type="checkbox" class="player-checkbox" data-game-days="${player.game_days}" data-points="${player.average_points}">`,
+                            player.name,
+                            player.status,
+                            player.position,
+                            player.team,
+                            player.games_in_week,
+                            player.average_points.toFixed(2),
+                            (player.games_in_week * player.average_points).toFixed(2),
+                            player.game_days
+                        ]).draw();
+                    });
+
+                    // Update Drop Candidates Table
+                    dropCandidatesTable.clear();
+                    data.drop_candidates.forEach(player => {
+                        dropCandidatesTable.row.add([
+                            `<input type="checkbox" class="player-checkbox" data-game-days="${player.game_days}" data-points="${player.average_points}">`,
+                            player.name,
+                            player.status,
+                            player.position,
+                            player.team,
+                            player.games_in_week,
+                            player.average_points.toFixed(2),
+                            (player.games_in_week * player.average_points).toFixed(2),
+                            player.game_days
+                        ]).draw();
+                    });
+
+                    updateChartData(); // Initialize chart data and total points
+                } catch (error) {
+                    console.error('Error fetching recommendations:', error);
+                    alert('Failed to fetch recommendations. Please try again.');
+                }
+            }
+
+            // Attach event listener to dynamically update chart when checkboxes change
+            $(document).on('change', '.player-checkbox', function () {
+                updateChartData();
+            });
+
+            $('#team-form').on('submit', function (e) {
+                e.preventDefault();
+                fetchRecommendations();
+            });
+        });
+    </script>
+</body>
+</html>
